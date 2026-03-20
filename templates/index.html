@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blackspot Alert India — Drive Safe. Stay Alert. Save Lives.</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg:#060810;--surface:rgba(255,255,255,0.04);--glass:rgba(255,255,255,0.055);
+      --border:rgba(255,255,255,0.08);--border-hi:rgba(99,179,237,0.35);
+      --blue:#3b82f6;--blue-g:rgba(59,130,246,0.35);
+      --cyan:#06b6d4;--purple:#8b5cf6;--red:#ef4444;--red-g:rgba(239,68,68,0.4);
+      --amber:#f59e0b;--green:#10b981;
+      --text:#f0f4ff;--t2:#94a3b8;--t3:#475569;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;cursor:none;}
+    #cur{position:fixed;width:10px;height:10px;background:var(--blue);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen;}
+    #cur-ring{position:fixed;width:36px;height:36px;border:1.5px solid rgba(59,130,246,.5);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);}
+    body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
+    .orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0;animation:odrift 20s ease-in-out infinite alternate;}
+    .o1{width:600px;height:600px;background:rgba(59,130,246,.07);top:-200px;left:-200px;}
+    .o2{width:500px;height:500px;background:rgba(139,92,246,.06);top:30%;right:-150px;animation-delay:-7s;}
+    .o3{width:400px;height:400px;background:rgba(6,182,212,.05);bottom:0;left:30%;animation-delay:-14s;}
+    @keyframes odrift{from{transform:translate(0,0) scale(1);}to{transform:translate(40px,60px) scale(1.1);}}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.5;}}
+    @keyframes fadeup{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes popin{from{transform:translate(-50%,-50%) scale(.8);opacity:0;}to{transform:translate(-50%,-50%) scale(1);opacity:1;}}
+    @keyframes barslide{from{transform:translateY(-100%);}to{transform:translateY(0);}}
+    @keyframes ringpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4);}50%{box-shadow:0 0 0 16px rgba(239,68,68,0);}}
+
+    /* ══════════════════════ MODALS / OVERLAYS ══════════════════════ */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:5000;display:flex;align-items:center;justify-content:center;}
+    .modal-box{background:linear-gradient(135deg,#0f1628,#0a0e1a);border:1px solid var(--border);border-radius:20px;padding:40px;width:420px;max-width:94vw;position:relative;animation:popin .35s cubic-bezier(.34,1.56,.64,1);}
+    .modal-box h2{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:4px;}
+    .modal-box h2 span{color:var(--blue);}
+    .modal-box p{font-size:.85rem;color:var(--t2);margin-bottom:28px;}
+    .mclose{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--t3);font-size:1.2rem;cursor:pointer;transition:color .2s;}
+    .mclose:hover{color:var(--text);}
+
+    /* ══════════════════════ ENTRY SCREEN ══════════════════════ */
+    #entry-screen{position:fixed;inset:0;z-index:4000;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+    .entry-card{text-align:center;animation:fadeup .6s ease both;}
+    .entry-logo{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;margin-bottom:8px;}
+    .logo-box{width:40px;height:40px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+    .entry-sub{color:var(--t2);font-size:.9rem;margin-bottom:48px;}
+    .entry-label{font-size:.75rem;color:var(--t3);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;}
+    .entry-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+    .entry-btn{padding:18px 44px;border-radius:12px;font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.5px;transition:all .25s;display:flex;align-items:center;gap:10px;}
+    .eb-user{background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;box-shadow:0 8px 32px var(--blue-g);}
+    .eb-user:hover{transform:translateY(-3px);box-shadow:0 16px 40px var(--blue-g);}
+    .eb-admin{background:var(--glass);border:1px solid var(--border);color:var(--text);backdrop-filter:blur(10px);}
+    .eb-admin:hover{border-color:var(--border-hi);transform:translateY(-2px);}
+    .entry-flag{display:flex;height:4px;width:160px;border-radius:2px;overflow:hidden;margin:0 auto 32px;}
+    .entry-flag span:nth-child(1){background:#FF9933;flex:1;}
+    .entry-flag span:nth-child(2){background:#fff;flex:1;}
+    .entry-flag span:nth-child(3){background:#138808;flex:1;}
+
+    /* ══════════════════════ FORM STYLES ══════════════════════ */
+    .fg{margin-bottom:14px;}
+    .fg label{display:block;font-size:.72rem;color:var(--t2);margin-bottom:5px;letter-spacing:.5px;}
+    .fg input,.fg select,.fg textarea{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-size:.9rem;font-family:'DM Sans',sans-serif;transition:border .2s;}
+    .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:rgba(59,130,246,.5);}
+    .fg textarea{resize:vertical;min-height:80px;}
+    .form-err{color:#fca5a5;font-size:.78rem;margin-top:-8px;margin-bottom:8px;display:none;}
+    .btn-full{width:100%;padding:12px;background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 20px var(--blue-g);transition:all .2s;margin-top:4px;}
+    .btn-full:hover{filter:brightness(1.1);transform:translateY(-1px);}
+    .form-switch{text-align:center;margin-top:14px;font-size:.82rem;color:var(--t2);}
+    .form-switch a{color:var(--blue);cursor:pointer;text-decoration:none;}
+    .form-switch a:hover{text-decoration:underline;}
+
+    /* ══════════════════════ TOPNAV ══════════════════════ */
+    #topnav{position:fixed;top:0;left:0;right:0;z-index:1000;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;backdrop-filter:blur(20px);background:rgba(6,8,16,.7);border-bottom:1px solid var(--border);}
+    .nav-logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;}
+    .live-pill{padding:3px 8px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:100px;font-size:.65rem;color:#fca5a5;letter-spacing:1px;text-transform:uppercase;font-weight:600;animation:blink 2s ease-in-out infinite;}
+    .nav-links{display:flex;gap:8px;align-items:center;}
+    .nav-link{padding:8px 16px;background:none;border:none;color:var(--t2);font-size:.875rem;cursor:pointer;border-radius:6px;transition:all .2s;text-decoration:none;font-family:'DM Sans',sans-serif;}
+    .nav-link:hover{color:var(--text);background:var(--surface);}
+    .nav-cta{padding:9px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all .25s;box-shadow:0 4px 20px var(--blue-g);}
+    .nav-cta:hover{transform:translateY(-1px);box-shadow:0 8px 30px var(--blue-g);filter:brightness(1.1);}
+    #user-nav-area{display:flex;align-items:center;gap:10px;}
+    #user-greeting{font-size:.85rem;color:var(--t2);}
+    #user-greeting span{color:var(--blue);font-weight:600;}
+
+    /* ══════════════════════ LANDING ══════════════════════ */
+    #hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 24px 80px;position:relative;overflow:hidden;}
+    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 60% at 50% 50%,black 40%,transparent 100%);}
+    .hero-tag{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:100px;font-size:.78rem;font-weight:500;color:#93c5fd;letter-spacing:.5px;margin-bottom:28px;animation:fadeup .6s ease both;}
+    .hero-tag .dot{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:blink 1.5s infinite;}
+    .hero-h1{font-family:'Syne',sans-serif;font-size:clamp(2.8rem,7vw,5.5rem);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:24px;animation:fadeup .6s .1s ease both;}
+    .grad-text{background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .hero-sub{max-width:560px;font-size:1.05rem;color:var(--t2);line-height:1.65;margin-bottom:44px;font-weight:300;animation:fadeup .6s .2s ease both;}
+    .hero-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;animation:fadeup .6s .3s ease both;}
+    .btn-primary{padding:15px 32px;background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .25s;box-shadow:0 8px 32px var(--blue-g);}
+    .btn-primary:hover{transform:translateY(-3px);box-shadow:0 16px 40px var(--blue-g);filter:brightness(1.1);}
+    .btn-outline{padding:15px 32px;background:var(--glass);color:var(--text);border:1px solid var(--border);border-radius:10px;font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;backdrop-filter:blur(10px);transition:all .25s;}
+    .btn-outline:hover{border-color:var(--border-hi);background:rgba(255,255,255,.09);transform:translateY(-2px);}
+    .hero-stats{display:flex;gap:40px;margin-top:64px;animation:fadeup .6s .45s ease both;}
+    .sv{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;background:linear-gradient(135deg,#fff,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .sl{font-size:.78rem;color:var(--t3);margin-top:2px;text-transform:uppercase;letter-spacing:1px;}
+    .sdiv{width:1px;background:var(--border);}
+
+    section{position:relative;z-index:1;}
+    .sec{max-width:1100px;margin:0 auto;padding:100px 24px;}
+    .sec-tag{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;color:var(--blue);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+    .sec-h2{font-family:'Syne',sans-serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:800;letter-spacing:-1px;margin-bottom:12px;}
+    .sec-sub{color:var(--t2);font-size:1rem;max-width:560px;line-height:1.6;font-weight:300;}
+    .reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease;}
+    .reveal.vis{opacity:1;transform:translateY(0);}
+
+    #features{background:linear-gradient(180deg,transparent,rgba(59,130,246,.03),transparent);}
+    .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:56px;}
+    .feat-card{background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:28px;backdrop-filter:blur(20px);transition:all .3s;position:relative;overflow:hidden;opacity:0;transform:translateY(30px);}
+    .feat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.04));opacity:0;transition:opacity .3s;}
+    .feat-card:hover{border-color:rgba(59,130,246,.3);transform:translateY(-6px);box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 40px rgba(59,130,246,.08);}
+    .feat-card:hover::before{opacity:1;}
+    .fi{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:18px;position:relative;z-index:1;}
+    .fi-b{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.2);}
+    .fi-r{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.2);}
+    .fi-c{background:rgba(6,182,212,.15);border:1px solid rgba(6,182,212,.2);}
+    .fi-p{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.2);}
+    .fi-a{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.2);}
+    .fi-g{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.2);}
+    .ft{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:8px;position:relative;z-index:1;}
+    .fd{font-size:.875rem;color:var(--t2);line-height:1.6;font-weight:300;position:relative;z-index:1;}
+
+    #how{background:linear-gradient(180deg,transparent,rgba(139,92,246,.03),transparent);}
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0;margin-top:56px;position:relative;}
+    .steps::before{content:'';position:absolute;top:40px;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,var(--border),var(--blue-g),var(--border),transparent);}
+    .step{text-align:center;padding:0 20px;opacity:0;transform:translateY(20px);position:relative;z-index:1;transition:opacity .5s,transform .5s;}
+    .step-num{width:80px;height:80px;border-radius:50%;background:var(--glass);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:1.8rem;backdrop-filter:blur(10px);transition:all .3s;}
+    .step:hover .step-num{border-color:var(--blue);box-shadow:0 0 30px var(--blue-g);}
+    .step-t{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:8px;}
+    .step-d{font-size:.84rem;color:var(--t2);line-height:1.55;font-weight:300;}
+
+    .preview-wrap{margin-top:56px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;}
+    .preview-card{background:var(--glass);border:1px solid var(--border);border-radius:20px;overflow:hidden;backdrop-filter:blur(20px);}
+    .ph{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.02);}
+    .tdot{width:10px;height:10px;border-radius:50%;}
+    .map-mock{height:280px;background:#0d1525;position:relative;overflow:hidden;}
+    .mg{position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.06) 1px,transparent 1px);background-size:30px 30px;}
+    .rh{position:absolute;height:2px;left:0;right:0;background:rgba(148,163,184,.15);}
+    .rv{position:absolute;width:2px;top:0;bottom:0;background:rgba(148,163,184,.15);}
+    .mspot{position:absolute;width:14px;height:14px;background:var(--red);border-radius:50%;border:2px solid rgba(255,255,255,.8);box-shadow:0 0 16px var(--red-g);animation:spulse 2s ease-in-out infinite;}
+    @keyframes spulse{0%,100%{box-shadow:0 0 16px var(--red-g);}50%{box-shadow:0 0 30px var(--red-g);transform:scale(1.2);}}
+    .muser{position:absolute;width:16px;height:16px;background:var(--blue);border-radius:50%;border:3px solid #fff;box-shadow:0 0 20px var(--blue-g);}
+    .mrad{position:absolute;width:80px;height:80px;border-radius:50%;border:1px dashed rgba(239,68,68,.5);background:rgba(239,68,68,.06);transform:translate(-50%,-50%);animation:rpulse 2s ease-in-out infinite;}
+    @keyframes rpulse{0%,100%{opacity:.8;transform:translate(-50%,-50%) scale(1);}50%{opacity:.4;transform:translate(-50%,-50%) scale(1.1);}}
+    .mlbl{position:absolute;background:rgba(239,68,68,.9);color:#fff;font-size:.65rem;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;}
+    .pil-list{padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+    .pil-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;font-size:.82rem;}
+    .pk{color:var(--t2);}.pv{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;}
+    .c-r{color:var(--red);}.c-g{color:var(--green);}.c-c{color:var(--cyan);}
+    .pr{display:flex;flex-direction:column;gap:16px;}
+    .alert-demo{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:20px;}
+    .adh{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+    .adi{font-size:1.8rem;}.adt{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fca5a5;}
+    .adm{font-size:.82rem;color:var(--t2);line-height:1.5;}
+    .vbadge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.25);border-radius:100px;font-size:.72rem;color:#c4b5fd;margin-top:10px;}
+    .wave{display:flex;align-items:center;gap:2px;}
+    .wb{width:3px;background:var(--purple);border-radius:2px;animation:wv .8s ease-in-out infinite alternate;}
+    .wb:nth-child(1){height:6px;}.wb:nth-child(2){height:10px;animation-delay:.1s;}.wb:nth-child(3){height:14px;animation-delay:.2s;}.wb:nth-child(4){height:10px;animation-delay:.3s;}.wb:nth-child(5){height:6px;animation-delay:.4s;}
+    @keyframes wv{from{transform:scaleY(.5);}to{transform:scaleY(1.5);}}
+
+    #cta{background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(139,92,246,.06));border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+    .cta-glow{position:absolute;width:600px;height:300px;background:radial-gradient(ellipse,rgba(59,130,246,.12),transparent 70%);left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;}
+    footer{padding:48px 40px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+    .flogo{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;}
+    .flinks{display:flex;gap:24px;}
+    .flink{font-size:.82rem;color:var(--t3);text-decoration:none;cursor:pointer;transition:color .2s;}
+    .flink:hover{color:var(--t2);}
+    .fcopy{font-size:.78rem;color:var(--t3);}
+
+    /* ══════════════════════ APP SCREEN ══════════════════════ */
+    #app-screen{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);flex-direction:column;}
+    #app-topbar{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(6,8,16,.92);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);flex-shrink:0;}
+    .alogo{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+    #app-badge{padding:4px 12px;border-radius:100px;font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(16,185,129,.12);color:var(--green);border:1px solid rgba(16,185,129,.25);transition:all .3s;}
+    #app-badge.dng{background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.3);animation:blink .8s infinite;}
+    .app-top-right{display:flex;align-items:center;gap:10px;}
+    #app-username{font-size:.8rem;color:var(--t2);}
+    #app-username span{color:var(--blue);font-weight:600;}
+    .btn-sm-outline{padding:6px 14px;background:none;border:1px solid var(--border);border-radius:7px;color:var(--t2);font-size:.78rem;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+    .btn-sm-outline:hover{border-color:var(--border-hi);color:var(--text);}
+    #app-abar{display:none;background:linear-gradient(90deg,#dc2626,#b91c1c);color:#fff;padding:10px 20px;font-family:'Syne',sans-serif;font-size:.85rem;font-weight:600;text-align:center;flex-shrink:0;animation:barslide .4s ease;}
+    .app-body{display:grid;grid-template-columns:320px 1fr;flex:1;overflow:hidden;}
+    #app-sidebar{background:rgba(8,12,20,.95);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+    .stabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .stab{flex:1;padding:12px 4px;background:none;border:none;color:var(--t3);font-family:'Syne',sans-serif;font-size:.68rem;font-weight:700;cursor:pointer;letter-spacing:.8px;text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;}
+    .stab.on{color:var(--text);border-bottom-color:var(--blue);}
+    .tpanel{display:none;padding:14px;flex-direction:column;gap:10px;}
+    .tpanel.on{display:flex;}
+    .icard{background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px;backdrop-filter:blur(10px);}
+    .icard-lbl{font-size:.65rem;font-weight:700;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;}
+    .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+    .cbox{background:rgba(0,0,0,.3);border-radius:8px;padding:9px;}
+    .cbox label{font-size:.6rem;color:var(--t3);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:1px;}
+    .cbox span{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:var(--cyan);}
+    .spill{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);transition:all .3s;}
+    .spill.wn{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);animation:blink 1s infinite;}
+    .sdot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+    .spill.wn .sdot{background:var(--red);}
+    #stxt{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;color:var(--green);}
+    .spill.wn #stxt{color:#fca5a5;}
+    .bsr{background:rgba(0,0,0,.25);border-radius:8px;padding:10px;border-left:2px solid var(--red);margin-bottom:6px;}
+    .bsr-n{font-size:.82rem;font-weight:500;margin-bottom:4px;}
+    .bsr-d{font-family:'Syne',sans-serif;font-size:.78rem;color:var(--amber);}
+    .bsr-s{font-size:.68rem;color:var(--t3);}
+    .btn-rsubmit{width:100%;padding:11px;background:linear-gradient(135deg,var(--blue),#2563eb);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 16px var(--blue-g);transition:all .2s;}
+    .btn-rsubmit:hover{filter:brightness(1.1);transform:translateY(-1px);}
+    .stoast{display:none;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--green);padding:9px;border-radius:7px;font-size:.8rem;text-align:center;margin-top:8px;}
+    .suggest-badge{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#93c5fd;padding:6px 12px;border-radius:6px;font-size:.75rem;text-align:center;margin-bottom:10px;}
+    #map{flex:1;height:100%;}
+    #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:9000;}
+    #alert-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9001;background:linear-gradient(135deg,#0f1628,#0d0a1e);border:1px solid rgba(239,68,68,.4);border-radius:20px;padding:36px;text-align:center;max-width:380px;width:90%;box-shadow:0 0 80px rgba(239,68,68,.3),0 30px 60px rgba(0,0,0,.6);animation:popin .35s cubic-bezier(.34,1.56,.64,1);}
+    .mring{width:80px;height:80px;margin:0 auto 20px;border-radius:50%;background:rgba(239,68,68,.1);border:2px solid rgba(239,68,68,.4);display:flex;align-items:center;justify-content:center;font-size:2.2rem;animation:ringpulse 1.5s ease-in-out infinite;}
+    #alert-modal h2{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#fca5a5;margin-bottom:8px;}
+    #mspot{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+    #alert-modal p{font-size:.85rem;color:var(--t2);line-height:1.5;margin-bottom:24px;}
+    .btn-dismiss{padding:12px 32px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:all .2s;box-shadow:0 4px 20px rgba(239,68,68,.4);}
+    .btn-dismiss:hover{filter:brightness(1.1);transform:translateY(-2px);}
+    ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}
+    @media(max-width:900px){.preview-wrap{grid-template-columns:1fr;}.steps::before{display:none;}#topnav{padding:0 20px;}.nav-links .nav-link{display:none;}footer{flex-direction:column;align-items:flex-start;}}
+    @media(max-width:768px){.app-body{grid-template-columns:1fr;grid-template-rows:280px 1fr;}#app-sidebar{height:280px;border-right:none;border-bottom:1px solid var(--border);}#map{min-height:60vh;}.hero-stats{gap:24px;}}
+  </style>
+</head>
+<body>
+<div id="cur"></div><div id="cur-ring"></div>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ENTRY SCREEN — Choose User or Admin
+══════════════════════════════════════════════════════════ -->
+<div id="entry-screen">
+  <div class="entry-card">
+    <div class="entry-logo">
+      <div class="logo-box">🛡️</div>
+      Blackspot<span style="color:var(--blue)">Alert</span> India
+    </div>
+    <p class="entry-sub">Real-time road safety & accident prevention platform</p>
+    <div class="entry-flag"><span></span><span></span><span></span></div>
+    <div class="entry-label">Continue as:</div>
+    <div class="entry-btns">
+      <button class="entry-btn eb-user" onclick="showUserAuth()">👤 User</button>
+      <button class="entry-btn eb-admin" onclick="window.location='/admin'">🔐 Admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     USER AUTH MODAL
+══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="auth-overlay" style="display:none">
+  <!-- LOGIN -->
+  <div class="modal-box" id="login-box">
+    <button class="mclose" onclick="closeAuth()">✕</button>
+    <button onclick="closeAuth()" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--t2);font-size:.82rem;cursor:pointer;margin-bottom:16px;padding:0;">← Back to Home</button>
+    <h2>Welcome <span>Back</span></h2>
+    <p>Login to access live tracking and safety features</p>
+    <div class="fg"><label>Phone Number</label><input type="tel" id="l-phone" placeholder="10-digit mobile number" maxlength="10"/></div>
+    <div class="fg"><label>Password</label><input type="password" id="l-pass" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="form-err" id="l-err"></div>
+    <button class="btn-full" onclick="doLogin()">Login →</button>
+    <div class="form-switch">Don't have an account? <a onclick="showSignup()">Sign up free</a></div>
+    <div class="form-switch" style="margin-top:8px"><a onclick="guestEntry()">Continue as Guest (no account)</a></div>
+  </div>
+
+  <!-- SIGNUP -->
+  <div class="modal-box" id="signup-box" style="display:none">
+    <button class="mclose" onclick="closeAuth()">✕</button>
+    <button onclick="closeAuth()" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--t2);font-size:.82rem;cursor:pointer;margin-bottom:16px;padding:0;">← Back to Home</button>
+    <h2>Create <span>Account</span></h2>
+    <p>Join India's road safety community</p>
+    <div class="fg"><label>Full Name</label><input type="text" id="s-name" placeholder="Your name"/></div>
+    <div class="fg"><label>Phone Number</label><input type="tel" id="s-phone" placeholder="10-digit mobile number" maxlength="10"/></div>
+    <div class="fg"><label>Password</label><input type="password" id="s-pass" placeholder="Create a password (min 4 chars)" onkeydown="if(event.key==='Enter')doSignup()"/></div>
+    <div class="form-err" id="s-err"></div>
+    <button class="btn-full" onclick="doSignup()">Create Account →</button>
+    <div class="form-switch">Already have an account? <a onclick="showLogin()">Login</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════════════════════════════ -->
+<div id="landing" style="display:none">
+
+  <nav id="topnav">
+    <div class="nav-logo">
+      <div class="logo-box" style="width:32px;height:32px;border-radius:8px;font-size:1rem">🛡️</div>
+      Blackspot<span style="color:var(--blue)">Alert</span>
+      <span class="live-pill">🔴 Live</span>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link" href="#features">Features</a>
+      <a class="nav-link" href="#how">How It Works</a>
+      <a class="nav-link" href="#preview">Preview</a>
+    </div>
+    <div id="user-nav-area">
+      <div id="user-greeting" style="display:none">Hello, <span id="uname-display">User</span></div>
+      <button class="nav-cta" id="nav-track-btn" onclick="launchApp()">Start Tracking →</button>
+      <button class="btn-sm-outline" id="nav-logout-btn" style="display:none" onclick="doLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <section id="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-tag"><span class="dot"></span>India's First Real-Time Blackspot Alert System</div>
+    <h1 class="hero-h1">Drive Safe.<br><span class="grad-text">Stay Alert.</span><br>Save Lives.</h1>
+    <p class="hero-sub">Real-time accident blackspot detection across India. Get instant alerts with voice warnings when you approach dangerous zones — keeping you and your family safe on every journey.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="launchApp()"><span>🗺️</span> Start Tracking</button>
+      <button class="btn-outline" onclick="launchApp();setTimeout(()=>switchTab('suggest'),600)"><span>💡</span> Suggest Blackspot</button>
+    </div>
+    <div class="hero-stats">
+      <div><div class="sv">4.5L+</div><div class="sl">Annual Accidents</div></div>
+      <div class="sdiv"></div>
+      <div><div class="sv">20+</div><div class="sl">Blackspots Tracked</div></div>
+      <div class="sdiv"></div>
+      <div><div class="sv">100m</div><div class="sl">Alert Radius</div></div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="sec">
+      <div class="reveal">
+        <div class="sec-tag">✦ Core Features</div>
+        <h2 class="sec-h2">Everything You Need to<br>Stay Safe on the Road</h2>
+        <p class="sec-sub">Powered by real-time GPS, voice alerts, and India's most comprehensive blackspot database.</p>
+      </div>
+      <div class="feat-grid">
+        <div class="feat-card"><div class="fi fi-b">🗺️</div><div class="ft">Live GPS Tracking</div><div class="fd">Real-time location tracking using browser Geolocation API. Your position updates continuously as you drive.</div></div>
+        <div class="feat-card"><div class="fi fi-r">⚠️</div><div class="ft">100m Proximity Alerts</div><div class="fd">Haversine formula calculates exact distance to every blackspot. Instant popup + voice alert within 100 meters.</div></div>
+        <div class="feat-card"><div class="fi fi-c">🔊</div><div class="ft">Voice Warnings</div><div class="fd">Hands-free audio alerts in Indian English. No need to look at your screen while driving.</div></div>
+        <div class="feat-card"><div class="fi fi-p">📊</div><div class="ft">Route Intelligence</div><div class="fd">See all nearby blackspots, the closest one ahead, and total count within 5km — all in real time.</div></div>
+        <div class="feat-card"><div class="fi fi-a">💡</div><div class="ft">Suggest New Blackspots</div><div class="fd">Know a dangerous road? Submit your suggestion. Admin reviews and adds it to the live database.</div></div>
+        <div class="feat-card"><div class="fi fi-g">🔐</div><div class="ft">Secure User Accounts</div><div class="fd">Create an account with phone + password. Your reports and suggestions are tracked to your profile.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="sec">
+      <div class="reveal" style="text-align:center">
+        <div class="sec-tag">✦ How It Works</div>
+        <h2 class="sec-h2">Simple. Powerful. Life-Saving.</h2>
+        <p class="sec-sub" style="margin:0 auto">From signup to live alert in seconds.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><div class="step-num">👤</div><div class="step-t">Sign Up / Login</div><div class="step-d">Create a free account with your phone number, or continue as a guest.</div></div>
+        <div class="step"><div class="step-num">📍</div><div class="step-t">Allow Location</div><div class="step-d">Grant GPS permission. Your live position is pinpointed on the map instantly.</div></div>
+        <div class="step"><div class="step-num">🎯</div><div class="step-t">Zone Detected</div><div class="step-d">System tracks your movement and detects blackspots within 100m on your route.</div></div>
+        <div class="step"><div class="step-num">🚨</div><div class="step-t">Alert Fired</div><div class="step-d">Popup + voice warning triggers. Drive carefully and the alert resets automatically when safe.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="preview">
+    <div class="sec">
+      <div class="reveal">
+        <div class="sec-tag">✦ Live Preview</div>
+        <h2 class="sec-h2">See It In Action</h2>
+        <p class="sec-sub">This is what you see when a blackspot is detected near your location.</p>
+      </div>
+      <div class="preview-wrap reveal">
+        <div class="preview-card">
+          <div class="ph">
+            <div class="tdot" style="background:#ef4444"></div><div class="tdot" style="background:#f59e0b"></div><div class="tdot" style="background:#10b981"></div>
+            <span style="font-size:.75rem;color:var(--t3);margin-left:6px">Live Map — Hyderabad, Telangana</span>
+          </div>
+          <div class="map-mock">
+            <div class="mg"></div>
+            <div class="rh" style="top:40%"></div><div class="rh" style="top:65%"></div>
+            <div class="rv" style="left:35%"></div><div class="rv" style="left:65%"></div>
+            <div class="mspot" style="top:38%;left:33%"></div>
+            <div class="mspot" style="top:62%;left:60%"></div>
+            <div class="mspot" style="top:25%;left:58%"></div>
+            <div class="mrad" style="top:41%;left:36%"></div>
+            <div class="muser" style="top:43%;left:39%"></div>
+            <div class="mlbl" style="top:28%;left:40%">🔴 NH44 Blackspot</div>
+            <div class="mlbl" style="top:66%;left:36%">🔴 ORR Shamshabad</div>
+            <div style="position:absolute;bottom:12px;left:12px;background:rgba(239,68,68,.85);color:#fff;padding:6px 12px;border-radius:6px;font-size:.72rem;font-weight:700">⚠️ BLACKSPOT WITHIN 100M</div>
+            <div style="position:absolute;bottom:12px;right:12px;background:rgba(59,130,246,.85);color:#fff;padding:6px 12px;border-radius:6px;font-size:.72rem;font-weight:700">📍 YOU</div>
+          </div>
+          <div class="pil-list">
+            <div class="pil-row"><span class="pk">Status</span><span class="pv c-r">⚠️ DANGER ZONE</span></div>
+            <div class="pil-row"><span class="pk">Nearest Blackspot</span><span class="pv c-c">47 m away</span></div>
+            <div class="pil-row"><span class="pk">Blackspots in 5km</span><span class="pv">3 detected</span></div>
+          </div>
+        </div>
+        <div class="pr">
+          <div class="alert-demo">
+            <div class="adh"><div class="adi">🚨</div><div class="adt">BLACKSPOT ALERT TRIGGERED!</div></div>
+            <div class="adm">You are within <strong style="color:#fca5a5">47 meters</strong> of <strong>Hyderabad ORR Shamshabad</strong>. Reduce speed immediately.</div>
+            <div class="vbadge"><div class="wave"><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div></div>Voice Alert Active</div>
+          </div>
+          <div style="background:var(--glass);border:1px solid var(--border);border-radius:14px;padding:20px;">
+            <div class="icard-lbl" style="color:var(--t3)">Next Blackspot Ahead</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px">NH44 Near Dobra</div>
+            <div style="font-size:.82rem;color:var(--t2)">2.3 km ahead — Medium severity</div>
+            <div style="margin-top:12px;height:4px;background:rgba(255,255,255,.05);border-radius:2px"><div style="height:100%;width:30%;background:linear-gradient(90deg,var(--amber),var(--red));border-radius:2px"></div></div>
+          </div>
+          <button class="btn-primary" style="width:100%;justify-content:center" onclick="launchApp()">🗺️ Launch Live Tracker</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cta">
+    <div style="max-width:700px;margin:0 auto;padding:100px 24px;text-align:center;position:relative">
+      <div class="cta-glow"></div>
+      <div class="reveal" style="position:relative;z-index:1">
+        <div class="sec-tag" style="justify-content:center">✦ Get Started Now</div>
+        <h2 class="sec-h2" style="font-size:clamp(2rem,5vw,3.5rem)">Start Preventing<br>Accidents Today</h2>
+        <p class="sec-sub" style="margin:16px auto 40px;text-align:center">Free to use, no complex signup — just phone + password and you're ready.</p>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary" onclick="launchApp()" style="font-size:1.05rem;padding:16px 40px">🗺️ Start Tracking Now</button>
+          <a class="btn-outline" href="/admin" style="font-size:1.05rem;padding:16px 40px;text-decoration:none;display:inline-flex;align-items:center;gap:10px">🔐 Admin Panel</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="flogo">🛡️ Blackspot<span style="color:var(--blue)">Alert</span> India</div>
+    <div class="flinks"><a class="flink" href="#features">Features</a><a class="flink" href="#how">How It Works</a><a class="flink" href="/admin">Admin</a></div>
+    <div class="fcopy">Road Safety Platform — India &copy; 2024 | Flask + Leaflet.js</div>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP SCREEN
+══════════════════════════════════════════════════════════ -->
+<div id="app-screen">
+  <div id="app-topbar">
+    <div class="alogo">
+      <div class="logo-box" style="width:28px;height:28px;border-radius:7px;font-size:.9rem">🛡️</div>
+      Blackspot<span style="color:var(--blue)">Alert</span>
+    </div>
+    <span id="app-badge">✅ SAFE</span>
+    <div class="app-top-right">
+      <div id="app-username"></div>
+      <button class="btn-sm-outline" onclick="goBack()">← Back</button>
+      <button class="btn-sm-outline" id="app-logout-btn" style="display:none" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div id="app-abar">⚠️ DANGER — Accident blackspot within 100 meters! Reduce speed immediately.</div>
+  <div class="app-body">
+    <div id="app-sidebar">
+      <div class="stabs">
+        <button class="stab on" onclick="switchTab('info',this)">📍 Info</button>
+        <button class="stab" onclick="switchTab('nearby',this)">⚠️ Nearby</button>
+        <button class="stab" onclick="switchTab('report',this)">📢 Report</button>
+        <button class="stab" onclick="switchTab('suggest',this)">💡 Suggest</button>
+      </div>
+
+      <!-- INFO TAB -->
+      <div class="tpanel on" id="tab-info">
+        <div class="icard">
+          <div class="icard-lbl">Your Location</div>
+          <div class="cgrid">
+            <div class="cbox"><label>Latitude</label><span id="lat-val">--</span></div>
+            <div class="cbox"><label>Longitude</label><span id="lng-val">--</span></div>
+          </div>
+          <div class="spill" id="spill"><div class="sdot"></div><span id="stxt">SAFE — Clear road ahead</span></div>
+        </div>
+        <div class="icard" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="icard-lbl">MAP DATA</div>
+            <div id="bs-count" style="font-size:.8rem;color:var(--t2)">Loading...</div>
+            <div id="last-updated" style="font-size:.68rem;color:var(--t3);margin-top:2px"></div>
+          </div>
+          <button onclick="manualRefresh()" id="refresh-btn" style="padding:7px 14px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);color:#93c5fd;border-radius:7px;font-size:0.75rem;cursor:pointer;font-family:DM Sans,sans-serif;transition:all .2s;">🔄 Refresh</button>
+        </div>
+
+        <div class="icard">
+          <div class="icard-lbl">Nearest Blackspot</div>
+          <div id="nearest-info" style="font-size:.83rem;color:var(--t2)">Fetching GPS...</div>
+        </div>
+        <div class="icard">
+          <div class="icard-lbl">Next Ahead</div>
+          <div id="next-info" style="font-size:.83rem;color:var(--t2)">—</div>
+        </div>
+      </div>
+
+      <!-- NEARBY TAB -->
+      <div class="tpanel" id="tab-nearby">
+        <div class="icard">
+          <div class="icard-lbl">Blackspots Within 5km</div>
+          <div id="nearby-list"><span style="font-size:.83rem;color:var(--t3)">Locating...</span></div>
+        </div>
+      </div>
+
+      <!-- REPORT TAB -->
+      <div class="tpanel" id="tab-report">
+        <div class="icard">
+          <div class="icard-lbl">Submit Report</div>
+          <div class="fg"><label>Type</label>
+            <select id="r-type">
+              <option value="complaint">🟡 Road Complaint</option>
+              <option value="suggestion">🟢 General Suggestion</option>
+            </select>
+          </div>
+          <div class="fg"><label>Location (GPS)</label><input type="text" id="r-loc" placeholder="Auto-detected from GPS..."/></div>
+          <div class="fg"><label>Description *</label><textarea id="r-desc" placeholder="Describe the road issue in detail..."></textarea></div>
+          <button class="btn-rsubmit" onclick="submitReport()">📢 Submit Report</button>
+          <div class="stoast" id="r-success" style="margin-top:10px">✅ Report sent to admin successfully!</div>
+        </div>
+      </div>
+
+      <!-- SUGGEST BLACKSPOT TAB -->
+      <div class="tpanel" id="tab-suggest">
+        <div class="suggest-badge">💡 Suggest a new accident-prone zone to admin for review</div>
+        <div class="icard">
+          <div class="icard-lbl">Suggest New Blackspot</div>
+          <div class="fg"><label>Location Name *</label><input type="text" id="sg-name" placeholder="e.g. NH48 Near Hosur"/></div>
+          <div class="fg"><label>State</label><input type="text" id="sg-state" placeholder="e.g. Karnataka"/></div>
+          <div class="fg"><label>Severity</label>
+            <select id="sg-severity">
+              <option value="high">🔴 High</option>
+              <option value="medium" selected>🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>GPS Coordinates <span style="color:var(--t3);font-weight:400">(auto-filled from your location)</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+              <input type="number" id="sg-lat" placeholder="Latitude" step="0.0001"/>
+              <input type="number" id="sg-lng" placeholder="Longitude" step="0.0001"/>
+            </div>
+            <button onclick="fillMyLocation()" style="width:100%;padding:7px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.25);color:#67e8f9;border-radius:7px;font-size:0.75rem;cursor:pointer;font-family:DM Sans,sans-serif;">📍 Use My Current Location</button>
+          </div>
+          <div class="fg"><label>Description *</label><textarea id="sg-desc" placeholder="Why is this spot dangerous? What accidents have occurred here?"></textarea></div>
+          <button class="btn-rsubmit" onclick="submitSuggestion()">Submit to Admin →</button>
+          <div class="stoast" id="sg-success">✅ Suggestion submitted! Admin will review it.</div>
+        </div>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- ALERT MODAL -->
+<div id="overlay" onclick="dismissAlert()"></div>
+<div id="alert-modal">
+  <div class="mring">⚠️</div>
+  <h2>BLACKSPOT ALERT!</h2>
+  <div id="mspot">—</div>
+  <p>You are within 100 meters of a known accident-prone zone. Reduce speed immediately and drive with extreme caution.</p>
+  <button class="btn-dismiss" onclick="dismissAlert()">I Understand, Drive Carefully</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ── CURSOR ────────────────────────────────────────────────── */
+const cur=document.getElementById('cur'),cring=document.getElementById('cur-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function tick(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;cring.style.left=rx+'px';cring.style.top=ry+'px';requestAnimationFrame(tick);})();
+
+/* ── SCROLL REVEAL ─────────────────────────────────────────── */
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(!e.isIntersecting)return;
+    if(e.target.classList.contains('feat-card')){document.querySelectorAll('.feat-card').forEach((c,i)=>setTimeout(()=>c.classList.add('vis'),i*80));}
+    else if(e.target.classList.contains('step')){document.querySelectorAll('.step').forEach((s,i)=>setTimeout(()=>{s.style.opacity='1';s.style.transform='translateY(0)';},i*120));}
+    else{e.target.classList.add('vis');}
+  });
+},{threshold:.1});
+document.querySelectorAll('.reveal,.feat-card,.step').forEach(el=>obs.observe(el));
+
+/* ── SESSION STATE ─────────────────────────────────────────── */
+let currentUser = null; // {name, phone} or null (guest)
+let isGuest = false;
+
+/* ── ENTRY / AUTH FLOW ─────────────────────────────────────── */
+function showUserAuth(){
+  document.getElementById('entry-screen').style.display='none';
+  document.getElementById('auth-overlay').style.display='flex';
+  document.getElementById('login-box').style.display='block';
+  document.getElementById('signup-box').style.display='none';
+}
+function showLogin(){ document.getElementById('login-box').style.display='block'; document.getElementById('signup-box').style.display='none'; }
+function showSignup(){ document.getElementById('signup-box').style.display='block'; document.getElementById('login-box').style.display='none'; }
+function closeAuth(){ document.getElementById('auth-overlay').style.display='none'; document.getElementById('entry-screen').style.display='flex'; }
+
+function guestEntry(){
+  isGuest=true; currentUser=null;
+  document.getElementById('auth-overlay').style.display='none';
+  enterLanding(null);
+}
+
+function showErr(id,msg){ const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; setTimeout(()=>el.style.display='none',4000); }
+
+async function doLogin(){
+  const phone=document.getElementById('l-phone').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  if(!phone||!pass){showErr('l-err','Please fill in all fields.');return;}
+  const res=await fetch('/api/user/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,password:pass})});
+  const d=await res.json();
+  if(d.success){ currentUser={name:d.name,phone}; document.getElementById('auth-overlay').style.display='none'; enterLanding(d.name); }
+  else showErr('l-err',d.error||'Login failed.');
+}
+
+async function doSignup(){
+  const name=document.getElementById('s-name').value.trim();
+  const phone=document.getElementById('s-phone').value.trim();
+  const pass=document.getElementById('s-pass').value;
+  if(!name||!phone||!pass){showErr('s-err','Please fill in all fields.');return;}
+  const res=await fetch('/api/user/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,password:pass})});
+  const d=await res.json();
+  if(d.success){ currentUser={name:d.name,phone}; document.getElementById('auth-overlay').style.display='none'; enterLanding(d.name); }
+  else showErr('s-err',d.error||'Signup failed.');
+}
+
+async function doLogout(){
+  await fetch('/api/user/logout',{method:'POST'});
+  currentUser=null; isGuest=false;
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('landing').style.display='none';
+  document.getElementById('entry-screen').style.display='flex';
+}
+
+function enterLanding(name){
+  document.getElementById('landing').style.display='block';
+  if(name){
+    document.getElementById('user-greeting').style.display='block';
+    document.getElementById('uname-display').textContent=name;
+    document.getElementById('nav-logout-btn').style.display='block';
+  } else {
+    document.getElementById('user-greeting').style.display='none';
+    document.getElementById('nav-logout-btn').style.display='none';
+  }
+}
+
+/* ── APP LAUNCH ────────────────────────────────────────────── */
+let map,uMarker,wCircle,blackspots=[],bsMarkers=[];
+let uLat=null,uLng=null,alerted=false,lastId=null;
+
+function launchApp(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('app-screen').style.display='flex';
+  // Set username in app topbar
+  if(currentUser){
+    document.getElementById('app-username').innerHTML=`Hi, <span style="color:var(--blue);font-weight:600">${currentUser.name}</span>`;
+    document.getElementById('app-logout-btn').style.display='block';
+  } else if(isGuest){
+    document.getElementById('app-username').innerHTML=`<span style="color:var(--t3);font-size:.75rem">Guest Mode</span>`;
+  }
+  if(!map){
+    setTimeout(()=>{initMap();loadBS();reqLoc();},80);
+    // Auto-refresh blackspots every 30 seconds to pick up admin approvals
+    setInterval(()=>{ if(map) loadBS(); }, 30000);
+  }
+  // Auto-fill suggest lat/lng once location available
+}
+
+function goBack(){
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('landing').style.display='block';
+}
+
+/* ── TABS ──────────────────────────────────────────────────── */
+function switchTab(n,b){
+  document.querySelectorAll('.stab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tpanel').forEach(x=>x.classList.remove('on'));
+  document.getElementById('tab-'+n).classList.add('on');
+  if(b)b.classList.add('on');
+}
+
+/* ── MAP ───────────────────────────────────────────────────── */
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView([20.5937,78.9629],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(map);
+}
+
+async function loadBS(){
+  try {
+    const r = await fetch('/api/blackspots');
+    blackspots = await r.json();
+    renderBS();
+    const countEl = document.getElementById('bs-count');
+    const updEl   = document.getElementById('last-updated');
+    if(countEl) countEl.textContent = blackspots.length + ' blackspots on map';
+    if(updEl)   updEl.textContent   = 'Updated ' + new Date().toLocaleTimeString();
+    if(uLat) checkProx();
+  } catch(e){ console.error('loadBS failed:', e); }
+}
+
+async function manualRefresh(){
+  const btn = document.getElementById('refresh-btn');
+  if(!btn) return;
+  btn.textContent = '⏳ Refreshing...';
+  btn.disabled = true;
+  await loadBS();
+  btn.textContent = '✅ Updated!';
+  setTimeout(()=>{ btn.textContent = '🔄 Refresh'; btn.disabled = false; }, 2000);
+}
+
+function renderBS(){
+  bsMarkers.forEach(m=>map.removeLayer(m)); bsMarkers=[];
+  const ico=L.divIcon({className:'',html:`<div style="width:13px;height:13px;background:#ef4444;border:2px solid rgba(255,255,255,.9);border-radius:50%;box-shadow:0 0 12px rgba(239,68,68,.9)"></div>`,iconSize:[13,13],iconAnchor:[6.5,6.5]});
+  blackspots.forEach(bs=>{const m=L.marker([bs.lat,bs.lng],{icon:ico}).addTo(map);m.bindPopup(`<b>${bs.name}</b><br><small>${bs.state||''}</small><br><small>${bs.description||''}</small>`);m.bsData=bs;bsMarkers.push(m);});
+}
+
+/* ── LOCATION ──────────────────────────────────────────────── */
+function reqLoc(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(
+    p=>{uLat=p.coords.latitude;uLng=p.coords.longitude;updateUM();checkProx();updateUI();},
+    ()=>{uLat=28.6139;uLng=77.209;updateUM();checkProx();updateUI();},
+    {enableHighAccuracy:true,maximumAge:5000,timeout:10000}
+  );
+}
+
+function updateUM(){
+  const ico=L.divIcon({className:'',html:`<div style="width:16px;height:16px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 16px rgba(59,130,246,1)"></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+  if(uMarker)uMarker.setLatLng([uLat,uLng]);
+  else{uMarker=L.marker([uLat,uLng],{icon:ico}).addTo(map);uMarker.bindPopup('📍 You');map.setView([uLat,uLng],13);}
+}
+
+function hav(a,b,c,d){
+  const R=6371000,r=x=>x*Math.PI/180,dL=r(c-a),dG=r(d-b);
+  const k=Math.sin(dL/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(k),Math.sqrt(1-k));
+}
+
+/* ── PROXIMITY ─────────────────────────────────────────────── */
+function checkProx(){
+  if(!uLat||!blackspots.length)return;
+  const sorted=blackspots.map(bs=>({...bs,dist:hav(uLat,uLng,bs.lat,bs.lng)})).sort((a,b)=>a.dist-b.dist);
+  const in100=sorted.filter(b=>b.dist<=100),in5k=sorted.filter(b=>b.dist<=5000);
+  const sp=document.getElementById('spill'),st=document.getElementById('stxt');
+  const ab=document.getElementById('app-badge'),abar=document.getElementById('app-abar');
+  if(in100.length>0){
+    sp.classList.add('wn');st.textContent=`⚠️ ${in100.length} blackspot(s) within 100m!`;
+    ab.textContent='⚠️ DANGER';ab.classList.add('dng');abar.style.display='block';
+    const top=in100[0];
+    if(!alerted||lastId!==top.id){triggerAlert(top);lastId=top.id;alerted=true;drawCircle(top);}
+  } else {
+    sp.classList.remove('wn');st.textContent='SAFE — Clear road ahead';
+    ab.textContent='✅ SAFE';ab.classList.remove('dng');abar.style.display='none';
+    alerted=false;lastId=null;removeCircle();
+  }
+  updateNearby(in5k); updateNearest(sorted);
+}
+
+function drawCircle(bs){
+  if(wCircle)map.removeLayer(wCircle);
+  wCircle=L.circle([bs.lat,bs.lng],{radius:100,color:'#ef4444',fillColor:'#ef4444',fillOpacity:.1,weight:2,dashArray:'6 4'}).addTo(map);
+  map.panTo([bs.lat,bs.lng]);
+}
+function removeCircle(){if(wCircle){map.removeLayer(wCircle);wCircle=null;}}
+
+function triggerAlert(bs){
+  document.getElementById('mspot').textContent=bs.name;
+  document.getElementById('alert-modal').style.display='block';
+  document.getElementById('overlay').style.display='block';
+  if('speechSynthesis' in window){
+    const u=new SpeechSynthesisUtterance(`Warning! You are near an accident blackspot. ${bs.name}. Please drive carefully!`);
+    u.lang='en-IN';u.rate=0.9;window.speechSynthesis.cancel();window.speechSynthesis.speak(u);
+  }
+}
+function dismissAlert(){document.getElementById('alert-modal').style.display='none';document.getElementById('overlay').style.display='none';}
+
+/* ── UI ────────────────────────────────────────────────────── */
+function updateUI(){
+  document.getElementById('lat-val').textContent=uLat?uLat.toFixed(5):'--';
+  document.getElementById('lng-val').textContent=uLng?uLng.toFixed(5):'--';
+  document.getElementById('r-loc').value=uLat?`${uLat.toFixed(5)}, ${uLng.toFixed(5)}`:'';
+  // Auto-fill suggest coords
+  if(uLat&&!document.getElementById('sg-lat').value){
+    document.getElementById('sg-lat').value=uLat.toFixed(5);
+    document.getElementById('sg-lng').value=uLng.toFixed(5);
+  }
+}
+
+function updateNearest(s){
+  if(!s.length)return;
+  const b=s[0];
+  document.getElementById('nearest-info').innerHTML=`<b style="color:var(--text)">${b.name}</b><br><span style="font-family:Syne,sans-serif;color:var(--amber)">${fd(b.dist)}</span><span style="color:var(--t3);font-size:.75rem"> — ${b.state||''}</span>`;
+  if(s.length>1){const b1=s[1];document.getElementById('next-info').innerHTML=`<b style="color:var(--text)">${b1.name}</b><br><span style="font-family:Syne,sans-serif;color:var(--t2)">${fd(b1.dist)}</span>`;}
+}
+
+function updateNearby(list){
+  const el=document.getElementById('nearby-list');
+  if(!list.length){el.innerHTML='<span style="font-size:.82rem;color:var(--t3)">No blackspots within 5km</span>';return;}
+  el.innerHTML=list.slice(0,10).map(b=>`<div class="bsr"><div class="bsr-n">${b.name}</div><div class="bsr-d">${fd(b.dist)}</div><div class="bsr-s">${b.state||''} · ${(b.severity||'').toUpperCase()}</div></div>`).join('');
+}
+
+function fd(m){return m<1000?`${Math.round(m)} m`:`${(m/1e3).toFixed(1)} km`;}
+
+/* ── REPORT ────────────────────────────────────────────────── */
+async function submitReport(){
+  const desc = document.getElementById('r-desc').value.trim();
+  const type = document.getElementById('r-type').value;
+  const loc  = document.getElementById('r-loc').value;
+
+  if(!desc){ alert('Please enter a description.'); return; }
+
+  const btn = document.querySelector('#tab-report .btn-rsubmit');
+  const orig = btn.textContent;
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        type: type,
+        description: desc,
+        lat: uLat || 0,
+        lng: uLng || 0,
+        location_name: loc
+      })
+    });
+
+    if(!res.ok){
+      const txt = await res.text();
+      alert('Server error ' + res.status + ': ' + txt);
+      return;
+    }
+
+    const d = await res.json();
+    if(d.success){
+      document.getElementById('r-desc').value = '';
+      const t = document.getElementById('r-success');
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 3000);
+    } else {
+      alert(d.error || 'Submission failed. Try again.');
+    }
+  } catch(e) {
+    console.error('Report error:', e);
+    alert('Cannot reach server. Make sure python app.py is running.');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+/* ── FILL MY LOCATION ──────────────────────────────────────── */
+function fillMyLocation(){
+  if(uLat && uLng){
+    document.getElementById('sg-lat').value = uLat.toFixed(6);
+    document.getElementById('sg-lng').value = uLng.toFixed(6);
+  } else {
+    // request fresh location
+    navigator.geolocation && navigator.geolocation.getCurrentPosition(p=>{
+      uLat=p.coords.latitude; uLng=p.coords.longitude;
+      document.getElementById('sg-lat').value = uLat.toFixed(6);
+      document.getElementById('sg-lng').value = uLng.toFixed(6);
+    }, ()=>alert('Could not get location. Please type coordinates manually.'));
+  }
+}
+
+/* ── SUGGEST BLACKSPOT ─────────────────────────────────────── */
+async function submitSuggestion(){
+  const name = document.getElementById('sg-name').value.trim();
+  const desc = document.getElementById('sg-desc').value.trim();
+  const state = document.getElementById('sg-state').value.trim();
+  const severity = document.getElementById('sg-severity').value;
+  const latInput = document.getElementById('sg-lat').value;
+  const lngInput = document.getElementById('sg-lng').value;
+
+  // Use typed coords first, fall back to live GPS
+  let lat = latInput ? parseFloat(latInput) : uLat;
+  let lng = lngInput ? parseFloat(lngInput) : uLng;
+
+  // Validations with clear messages
+  if(!name){ alert('Please enter the location name.'); return; }
+  if(!desc){ alert('Please enter a description.'); return; }
+  if(!lat || !lng || isNaN(lat) || isNaN(lng)){
+    // Try to use current GPS one more time
+    if(uLat && uLng){ lat = uLat; lng = uLng; }
+    else {
+      alert('GPS coordinates are needed. Either allow location access, or type the latitude and longitude manually.');
+      return;
+    }
+  }
+
+  // Show loading state
+  const btn = document.querySelector('#tab-suggest .btn-rsubmit');
+  const origText = btn.textContent;
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/user/suggest', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, description: desc, lat: parseFloat(lat), lng: parseFloat(lng), state, severity})
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      alert('Server error ' + res.status + ': ' + txt);
+      return;
+    }
+    const d = await res.json();
+    if (d.success) {
+      document.getElementById('sg-name').value = '';
+      document.getElementById('sg-desc').value = '';
+      document.getElementById('sg-state').value = '';
+      const t = document.getElementById('sg-success');
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 4000);
+    } else {
+      alert(d.error || 'Submission failed.');
+    }
+  } catch(e) {
+    console.error(e);
+    alert('Cannot connect to server. Is python app.py running?');
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
+/* ── INIT: Check session, skip entry if already logged in ──── */
+window.addEventListener('DOMContentLoaded', async()=>{
+  const res=await fetch('/api/user/me',{});
+  const d=await res.json();
+  if(d.logged_in){
+    currentUser={name:d.name};
+    document.getElementById('entry-screen').style.display='none';
+    enterLanding(d.name);
+  }
+});
+</script>
+</body>
+</html>
